@@ -1,0 +1,72 @@
+{
+  "swagger": "2.0",
+   "info": {
+     "title": "Roku API",
+     "description": "API for manageing roku system.",
+     "version": "1.0"
+   },
+   "externalDocs":{
+     "description": "Github Repo",
+     "url": ""
+   },
+   "produces": ["application/json"],
+   "paths": {
+    "/systems/":{
+      "get":
+      {
+        "x-swagger-router-controller":"Users",
+        "operationId":"list",
+        "tags":["Systems"],
+        "description":"",
+        "parameters":[
+        ],
+        "responses":{}
+      }
+    },
+      "/systems/{id}":
+      {
+        "get":{
+          "x-swagger-router-controller":"Systems",
+          "operationId":"show",
+          "tags":["Systems"],
+          "description":"",
+          "parameters":[
+            {"name":"id","in":"path","description":"","required":true,"type":"string"}
+          ],
+          "responses":{}
+        }
+      },
+      "/systems/{id}/actions":
+      {
+        "post":
+        {
+          "x-swagger-router-controller":"SystemActions",
+          "operationId":"action-create",
+          "tags":["Systems"],
+          "description":"",
+          "parameters":[
+            {"name":"id","in":"path","description":"","required":true,"type":"string"},
+            {"name":"body","in":"body","description":"","required":true,"schema":{"$ref":"#/definitions/action"}}
+          ],
+          "responses":{}
+        }
+      }
+},
+  "definitions":{
+    "action": {
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "description": "The type of action: home, back, up, down, left, right, enter, play, pause, forward, reverse, search.",
+          "type": "string"
+        },
+        "command": {
+          "description": "The command to be passed.",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

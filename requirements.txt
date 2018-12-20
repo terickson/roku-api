@@ -1,0 +1,5 @@
+roku
+flask
+flask-cors
+configparser
+flask-swagger-ui
