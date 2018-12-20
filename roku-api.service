@@ -4,6 +4,8 @@ After=multi-user.target
 
 [Service]
 Type=idle
+User=<<replace with user to run app as>>
+WorkingDirectory=/usr/apps/roku-api
 ExecStart=/usr/bin/python /usr/apps/roku-api/server.py
 Restart=always
 TimeoutStartSec=10
