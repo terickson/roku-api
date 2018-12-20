@@ -1,6 +1,6 @@
 [Logging]
 level: DEBUG
-moduleName: ericksot.roku
+moduleName: <<base>>.roku
 
 [Roku]
-hosts: family-room:192.168.72.230,master-bedroom:192.168.72.100
+hosts: room1:<<ip>>,room2:<<ip>>
