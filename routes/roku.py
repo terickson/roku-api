@@ -7,17 +7,17 @@ roku_template = Blueprint('roku_template', __name__, template_folder='templates'
 
 
 @roku_template.route('/', methods=['GET'])
-def users():
+def systems():
     return list()
 
 
 @roku_template.route('/<string:id>', methods=['GET'])
-def user(id):
+def system(id):
     return show(id)
 
 
 @roku_template.route('/<string:id>/actions', methods=['POST'])
-def groups(id):
+def actions(id):
     return create_action(id)
 
 
@@ -44,51 +44,51 @@ def create_action(id):
     roku = current_app.Roku(current_app.rokuSearch[id])
     action = request.get_json(force=True)
     current_app.logger.info("action: " + str(action))
-    if 'type' not in action:
-        return Response(json.dumps({"message": "type must be supplied"}), status=412, mimetype='application/json')
-    typeUpper = action['type'].upper()
-    if typeUpper == 'HOME':
+    if 'command' not in action:
+        return Response(json.dumps({"message": "command must be supplied"}), status=412, mimetype='application/json')
+    commandUpper = action['command'].upper()
+    if commandUpper == 'HOME':
         roku.home()
-    elif typeUpper == 'BACK':
+    elif commandUpper == 'BACK':
         roku.back()
-    elif typeUpper == 'UP':
-        spaces = int(action['command'])
+    elif commandUpper == 'UP':
+        spaces = int(action['value'])
         runRokuCommandXTimes(roku, spaces, 'up')
-    elif typeUpper == 'DOWN':
-        spaces = int(action['command'])
+    elif commandUpper == 'DOWN':
+        spaces = int(action['value'])
         runRokuCommandXTimes(roku, spaces, 'down')
-    elif typeUpper == 'LEFT':
-        spaces = int(action['command'])
+    elif commandUpper == 'LEFT':
+        spaces = int(action['value'])
         runRokuCommandXTimes(roku, spaces, 'left')
-    elif typeUpper == 'RIGHT':
-        spaces = int(action['command'])
+    elif commandUpper == 'RIGHT':
+        spaces = int(action['value'])
         runRokuCommandXTimes(roku, spaces, 'right')
-    elif typeUpper == 'ENTER':
+    elif commandUpper == 'ENTER':
         roku.enter()
-    elif typeUpper == 'SELECT':
+    elif commandUpper == 'SELECT':
         roku.select()
-    elif typeUpper == 'PLAY':
+    elif commandUpper == 'PLAY':
         roku.play()
-    elif typeUpper == 'PAUSE':
+    elif commandUpper == 'PAUSE':
         roku.play()
-    elif typeUpper == 'FORWARD':
+    elif commandUpper == 'FORWARD':
         roku.forward()
-    elif typeUpper == 'REVERSE':
+    elif commandUpper == 'REVERSE':
         roku.reverse()
-    elif typeUpper == 'SEARCH':
-        searchTerm = action['command'].lower()
+    elif commandUpper == 'SEARCH':
+        searchTerm = action['value'].lower()
         roku.search()
         roku.literal(searchTerm)
-    elif typeUpper == 'INPUT':
-        app = roku[action['command']]
+    elif commandUpper == 'INPUT':
+        app = roku[action['value']]
         app.launch()
     else:
-        return Response(json.dumps({"message": "Action type " + typeUpper + " could not be found."}), status=412, mimetype='application/json')
+        return Response(json.dumps({"message": "Action command " + commandUpper + " could not be found."}), status=412, mimetype='application/json')
 
     return Response(json.dumps({"message": "success"}), status=201, mimetype='application/json')
 
 
-def runRokuCommandXTimes(roku, x, command):
+def runRokuCommandXTimes(roku, x, value):
     for i in range(x):
-        getattr(roku, command)()
+        getattr(roku, value)()
         sleep(1)

@@ -55,15 +55,15 @@
   "definitions":{
     "action": {
       "required": [
-        "type"
+        "command"
       ],
       "properties": {
-        "type": {
-          "description": "The type of action: home, back, up, down, left, right, enter, play, pause, forward, reverse, search.",
+        "command": {
+          "description": "The command of action: home, back, up, down, left, right, enter, play, pause, forward, reverse, search.",
           "type": "string"
         },
-        "command": {
-          "description": "The command to be passed.",
+        "value": {
+          "description": "The value to be passed for the property if needed.",
           "type": "string"
         }
       }
