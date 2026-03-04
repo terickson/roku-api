@@ -1,5 +1,7 @@
-roku
-flask
-flask-cors
-configparser
-flask-swagger-ui
+roku==2.0
+fastapi
+uvicorn[standard]
+pydantic-settings
+python-dotenv
+pytest
+httpx

@@ -1,94 +1,100 @@
-import json
-from flask import Blueprint, current_app, Response, request
-from pprint import pprint
+import logging
 from time import sleep
 
-roku_template = Blueprint('roku_template', __name__, template_folder='templates')
+from fastapi import APIRouter, Response
+from fastapi.responses import JSONResponse
+from roku import Roku
+
+from lib.config import settings
+from models.roku import (
+    ActionRequest,
+    ActionResponse,
+    DeviceDetail,
+    DeviceSummary,
+    ErrorResponse,
+)
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/systems", tags=["Systems"])
+
+DIRECTION_COMMANDS = {"UP": "up", "DOWN": "down", "LEFT": "left", "RIGHT": "right"}
 
 
-@roku_template.route('/', methods=['GET'])
-def systems():
-    return list()
+def _get_devices() -> list[dict]:
+    return settings.get_roku_devices()
 
 
-@roku_template.route('/<string:id>', methods=['GET'])
-def system(id):
-    return show(id)
+def _get_lookup() -> dict[str, str]:
+    return settings.get_roku_lookup()
 
 
-@roku_template.route('/<string:id>/actions', methods=['POST'])
-def actions(id):
-    return create_action(id)
+def _run_command_x_times(roku: Roku, times: int, method: str):
+    for _ in range(times):
+        getattr(roku, method)()
+        sleep(1)
 
 
-def list():
-    return Response(json.dumps(current_app.rokus), mimetype='application/json')
+@router.get("/", response_model=list[DeviceSummary])
+def list_systems():
+    return _get_devices()
 
 
-def show(id):
-    current_app.logger.info("get roku " + id)
-    if id not in current_app.rokuSearch:
-        return Response(status=404)
-    rokuReturn = {'id': id, 'host': current_app.rokuSearch[id], 'apps':[]}
-    roku = current_app.Roku(current_app.rokuSearch[id])
-    for app in roku.apps:
-        rokuReturn['apps'].append({'id': app.id, 'name': app.name})
-    pprint(rokuReturn['apps'])
-    return Response(json.dumps(rokuReturn), mimetype='application/json')
+@router.get("/{device_id}", response_model=DeviceDetail, responses={404: {"model": ErrorResponse}})
+def get_system(device_id: str):
+    lookup = _get_lookup()
+    logger.info("get roku %s", device_id)
+    if device_id not in lookup:
+        return JSONResponse(status_code=404, content={"message": "Device not found"})
+    roku = Roku(lookup[device_id])
+    apps = [{"id": app.id, "name": app.name} for app in roku.apps]
+    return {"id": device_id, "host": lookup[device_id], "apps": apps}
 
 
-def create_action(id):
-    current_app.logger.info("post roku action for: " + id)
-    if id not in current_app.rokuSearch:
-        return Response(status=404)
-    roku = current_app.Roku(current_app.rokuSearch[id])
-    action = request.get_json(force=True)
-    current_app.logger.info("action: " + str(action))
-    if 'command' not in action:
-        return Response(json.dumps({"message": "command must be supplied"}), status=412, mimetype='application/json')
-    commandUpper = action['command'].upper()
-    if commandUpper == 'HOME':
+@router.post(
+    "/{device_id}/actions",
+    response_model=ActionResponse,
+    status_code=201,
+    responses={404: {"model": ErrorResponse}, 412: {"model": ErrorResponse}},
+)
+def create_action(device_id: str, action: ActionRequest):
+    lookup = _get_lookup()
+    logger.info("post roku action for: %s", device_id)
+    if device_id not in lookup:
+        return JSONResponse(status_code=404, content={"message": "Device not found"})
+
+    roku = Roku(lookup[device_id])
+    command = action.command.upper()
+    logger.info("action: %s", action.model_dump())
+
+    if command == "HOME":
         roku.home()
-    elif commandUpper == 'BACK':
+    elif command == "BACK":
         roku.back()
-    elif commandUpper == 'UP':
-        spaces = int(action['value'])
-        runRokuCommandXTimes(roku, spaces, 'up')
-    elif commandUpper == 'DOWN':
-        spaces = int(action['value'])
-        runRokuCommandXTimes(roku, spaces, 'down')
-    elif commandUpper == 'LEFT':
-        spaces = int(action['value'])
-        runRokuCommandXTimes(roku, spaces, 'left')
-    elif commandUpper == 'RIGHT':
-        spaces = int(action['value'])
-        runRokuCommandXTimes(roku, spaces, 'right')
-    elif commandUpper == 'ENTER':
+    elif command in DIRECTION_COMMANDS:
+        times = int(action.value) if action.value else 1
+        _run_command_x_times(roku, times, DIRECTION_COMMANDS[command])
+    elif command == "ENTER":
         roku.enter()
-    elif commandUpper == 'SELECT':
+    elif command == "SELECT":
         roku.select()
-    elif commandUpper == 'PLAY':
+    elif command in ("PLAY", "PAUSE"):
         roku.play()
-    elif commandUpper == 'PAUSE':
-        roku.play()
-    elif commandUpper == 'FORWARD':
+    elif command == "FORWARD":
         roku.forward()
-    elif commandUpper == 'REVERSE':
+    elif command == "REVERSE":
         roku.reverse()
-    elif commandUpper == 'SEARCH':
-        searchTerm = action['value'].lower()
+    elif command == "SEARCH":
+        search_term = action.value.lower() if action.value else ""
         roku.search()
-        roku.literal(searchTerm)
-    elif commandUpper == 'INPUT':
-        app = roku[action['value']]
+        roku.literal(search_term)
+    elif command == "INPUT":
+        app = roku[action.value]
         app.launch()
     else:
-        return Response(json.dumps({"message": "Action command " + commandUpper + " could not be found."}), status=412, mimetype='application/json')
+        return JSONResponse(
+            status_code=412,
+            content={"message": f"Action command {command} could not be found."},
+        )
 
-    return Response(json.dumps({"message": "success"}), status=201, mimetype='application/json')
-
-
-def runRokuCommandXTimes(roku, x, value):
-    for i in range(x):
-        getattr(roku, value)()
-        sleep(1)
+    return JSONResponse(status_code=201, content={"message": "success"})

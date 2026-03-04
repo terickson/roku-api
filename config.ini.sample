@@ -1,6 +1,0 @@
-[Logging]
-level: DEBUG
-moduleName: <<base>>.roku
-
-[Roku]
-hosts: room1:<<ip>>,room2:<<ip>>

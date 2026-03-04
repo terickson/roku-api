@@ -1,59 +1,30 @@
-# Config Parser code from http://code.activestate.com/recipes/426406-an-easy-to-use-configuration-reader/
-#
-'''
-
-    EXAMPLE
-    c = Configuration('Importador.ini')
-    print c.Origem.host, c.Origem.port
-    # An extra: print the configuration object itself
-    print c
-'''
-import os
-from configparser import SafeConfigParser
+from pydantic_settings import BaseSettings
 
 
-class Configuration:
-    def __init__(self, fileName):
-        if os.path.isfile(fileName):
-            cp = SafeConfigParser()
-            cp.read(fileName)
-            self.__parser = cp
-            self.fileName = fileName
-        else:
-            print('''
-                Please create a file called ''' + fileName + ''' in the same directory as this script.
-                It should look like:
-[<config_section_name>]
-<config_option_1>: <config_value_1>
-<config_option_2>: <config_value_2>
-                ''')
-            raise ValueError('file not found', fileName)
+class Settings(BaseSettings):
+    log_level: str = "DEBUG"
+    log_module_name: str = "roku-api"
+    roku_hosts: str = ""
+    host: str = "0.0.0.0"
+    port: int = 8080
 
-    def __getattr__(self, name):
-        if name in self.__parser.sections():
-            return Section(name, self.__parser)
-        else:
-            return None
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
-    def __str__(self):
-        p = self.__parser
-        result = []
-        result.append('<Configuration from %s>' % self.fileName)
-        for s in p.sections():
-            result.append('[%s]' % s)
-            for o in p.options(s):
-                result.append('%s=%s' % (o, p.get(s, o)))
-        return '\n'.join(result)
+    def get_roku_devices(self) -> list[dict]:
+        devices = []
+        for entry in self.roku_hosts.split(","):
+            parts = entry.strip().split(":")
+            if len(parts) == 2:
+                devices.append({"id": parts[0], "host": parts[1]})
+        return devices
 
-    def getsections(self):
-        p = self.__parser
-        return(p.sections())
+    def get_roku_lookup(self) -> dict[str, str]:
+        lookup = {}
+        for entry in self.roku_hosts.split(","):
+            parts = entry.strip().split(":")
+            if len(parts) == 2:
+                lookup[parts[0]] = parts[1]
+        return lookup
 
 
-class Section:
-    def __init__(self, name, parser):
-        self.name = name
-        self.__parser = parser
-
-    def __getattr__(self, name):
-        return self.__parser.get(self.name, name)
+settings = Settings()

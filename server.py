@@ -1,47 +1,30 @@
-from flask import Flask, request
-from flask_cors import CORS
-from lib import config, log
-from werkzeug.exceptions import HTTPException
-from routes.roku import roku_template
-from flask_swagger_ui import get_swaggerui_blueprint
-from roku import Roku
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-try:
-    c = config.Configuration('config.ini')
-except Exception as e:
-    exit()
+from lib.config import settings
+from lib.log import setup_logger
+from routes.roku import router as roku_router
 
-fileLocation = None
-log.setup_custom_logger(c.Logging.moduleName, c.Logging.level, fileLocation)
-swaggerUiUrl = ''
-swaggerDocUrl = '/static/swagger.json'
-swaggerui_blueprint = get_swaggerui_blueprint(swaggerUiUrl, swaggerDocUrl, config={'app_name': 'Roku API', 'validatorUrl': None, 'layout': 'BaseLayout'})
+setup_logger(settings.log_module_name, settings.log_level)
 
-app = Flask(__name__, static_url_path="/static")
-cors = CORS(app)
+app = FastAPI(
+    title="Roku API",
+    description="API for controlling local Roku devices.",
+    version="1.0.0",
+    docs_url="/",
+    redoc_url=None,
+)
 
-rokus = []
-rokuSearch = {}
-for rokuObj in c.Roku.hosts.split(','):
-    rokuAttribs = rokuObj.split(':')
-    rokus.append({'id': rokuAttribs[0], 'host': rokuAttribs[1]})
-    rokuSearch[rokuAttribs[0]] = rokuAttribs[1]
-app.rokus = rokus
-app.rokuSearch = rokuSearch
-app.Roku = Roku
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
+app.include_router(roku_router)
 
-@app.errorhandler(HTTPException)
-def handle_bad_request(e):
-    if not hasattr(e, 'code'):
-        return str(e), 500
-    elif e.code > 499:
-        app.logger.error(e)
-    return e
+if __name__ == "__main__":
+    import uvicorn
 
-
-app.register_blueprint(roku_template, url_prefix='/systems')
-app.register_blueprint(swaggerui_blueprint, url_prefix=swaggerUiUrl)
-
-if __name__ == '__main__':
-    app.run(debug=False, threaded=True, host='0.0.0.0', port=8080)
+    uvicorn.run("server:app", host=settings.host, port=settings.port)
